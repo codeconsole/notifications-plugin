@@ -11,7 +11,8 @@
         });
     </script>
 --%>
-<div class="notifications-bell-wrapper" id="notifications-bell">
+<div class="notifications-bell-wrapper" id="notifications-bell"
+     data-poll-interval="${grailsApplication.config.getProperty('notifications.pollInterval', Integer, 30000)}">
     <button class="btn btn-link notifications-bell-btn position-relative" type="button"
             id="notifications-bell-btn" aria-label="Notifications" title="Notifications">
         <i class="bi bi-bell"></i>

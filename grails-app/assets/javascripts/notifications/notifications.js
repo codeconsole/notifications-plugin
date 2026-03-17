@@ -69,7 +69,9 @@ var Notifications = (function() {
     function init(cfg) {
         config = cfg || {};
         config.base = cfg.notificationsBase || '/notifications';
-        config.pollInterval = cfg.pollInterval || 30000;
+        var bellEl = document.getElementById('notifications-bell');
+        var dataPoll = bellEl ? parseInt(bellEl.getAttribute('data-poll-interval')) : NaN;
+        config.pollInterval = cfg.pollInterval || (dataPoll > 0 ? dataPoll : 30000);
         config.typeIcons = Object.assign({}, DEFAULT_TYPE_ICONS, cfg.typeIcons || {});
 
         state.browserPermission = ('Notification' in window) ? Notification.permission : 'unsupported';
