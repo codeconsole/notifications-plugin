@@ -19,7 +19,11 @@ class NotificationsGrailsPlugin extends Plugin {
     def documentation = "http://grails.org/plugin/notifications-plugin"
 
     Closure doWithSpring() { {->
-    }}
+            notificationsInterceptor(NotificationsInterceptor) { bean ->
+                bean.autowire = 'byName'
+            }
+        }
+    }
 
     void doWithDynamicMethods() {
     }

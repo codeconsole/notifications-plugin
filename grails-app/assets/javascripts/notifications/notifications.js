@@ -52,7 +52,16 @@ var Notifications = (function() {
             options.body = JSON.stringify(options.json);
             delete options.json;
         }
-        return fetch(url, options).then(function(r) { return r.json(); });
+        return fetch(url, options).then(function(r) {
+            if (!r.ok) {
+                console.warn('Notifications: fetch error', r.status, url);
+                return {};
+            }
+            return r.json();
+        }).catch(function(err) {
+            console.warn('Notifications: fetch failed', url, err);
+            return {};
+        });
     }
 
     // ─── Init ───────────────────────────────────────────
@@ -201,27 +210,32 @@ var Notifications = (function() {
 
     function wireNotificationItems(container) {
         if (!container) return;
-        // Click on item → mark read + navigate
+        // Click on item → delete + navigate
         container.querySelectorAll('.notifications-item').forEach(function(item) {
             item.addEventListener('click', function(e) {
                 if (e.target.closest('.notifications-mark-read-btn')) return;
                 var id = item.dataset.notificationId;
                 var link = item.dataset.link;
-                markRead(id, function() {
-                    if (link) window.location.href = link;
-                });
+                if (item.classList.contains('unread')) {
+                    state.unreadCount = Math.max(0, state.unreadCount - 1);
+                    updateBadge(state.unreadCount);
+                }
+                item.remove();
+                deleteNotification(id);
+                if (link) window.location.href = link;
             });
         });
-        // Mark read button
+        // Mark read button (checkmark) — just clear unread, keep in list
         container.querySelectorAll('.notifications-mark-read-btn').forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 var id = btn.dataset.id;
-                markRead(id, function() {
-                    var item = btn.closest('.notifications-item');
-                    if (item) item.classList.remove('unread');
-                    btn.remove();
-                });
+                var item = btn.closest('.notifications-item');
+                if (item) item.classList.remove('unread');
+                btn.remove();
+                state.unreadCount = Math.max(0, state.unreadCount - 1);
+                updateBadge(state.unreadCount);
+                markRead(id);
             });
         });
     }
@@ -234,15 +248,12 @@ var Notifications = (function() {
         });
     }
 
-    function markRead(notificationId, callback) {
-        fetchJson(config.base + '/' + notificationId + '/read', { method: 'POST' })
-            .then(function(data) {
-                if (data.success) {
-                    state.unreadCount = Math.max(0, state.unreadCount - 1);
-                    updateBadge(state.unreadCount);
-                }
-                if (callback) callback(data);
-            });
+    function markRead(notificationId) {
+        fetchJson(config.base + '/' + notificationId + '/read', { method: 'POST' });
+    }
+
+    function deleteNotification(notificationId) {
+        fetchJson(config.base + '/' + notificationId, { method: 'DELETE' });
     }
 
     function markAllRead() {
@@ -251,15 +262,12 @@ var Notifications = (function() {
                 if (data.success) {
                     state.unreadCount = 0;
                     updateBadge(0);
-                    // Update UI
                     document.querySelectorAll('.notifications-item.unread').forEach(function(item) {
                         item.classList.remove('unread');
                     });
                     document.querySelectorAll('.notifications-mark-read-btn').forEach(function(btn) {
                         btn.remove();
                     });
-                    var markAllBtnFull = document.getElementById('mark-all-read-btn');
-                    if (markAllBtnFull) markAllBtnFull.style.display = 'none';
                 }
             });
     }

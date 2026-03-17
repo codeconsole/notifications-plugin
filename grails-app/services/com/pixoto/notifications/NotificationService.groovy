@@ -2,6 +2,7 @@ package com.pixoto.notifications
 
 import com.pixoto.notifications.api.NotificationUserProvider
 import grails.gorm.transactions.Transactional
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 
 import java.time.LocalDateTime
@@ -17,6 +18,7 @@ import java.time.LocalDateTime
  *   notificationService?.notify(scopeId, userId, 'message', 'New message from Alice', 'Hey!', '/messaging/42',
  *       [sourceUserId: senderId, sourceEntityType: 'conversation', sourceEntityId: '42', iconUrl: avatarUrl])
  */
+@Slf4j
 @Transactional
 class NotificationService {
 
@@ -41,18 +43,42 @@ class NotificationService {
         // Check user preferences
         if (!isTypeEnabled(userId, scopeId, type)) return null
 
-        Notification notification = new Notification(
-            scopeId: scopeId,
-            userId: userId,
-            type: type,
-            title: title,
-            body: body ? truncate(body, 500) : null,
-            link: link,
-            iconUrl: opts.iconUrl,
-            sourceUserId: opts.sourceUserId,
-            sourceEntityType: opts.sourceEntityType,
-            sourceEntityId: opts.sourceEntityId?.toString()
-        )
+        // Coalesce: if there's an existing unread notification for the same entity, update it
+        // instead of creating a duplicate (e.g., 5 messages in one conversation = 1 notification)
+        Notification notification = null
+        if (opts.sourceEntityType && opts.sourceEntityId) {
+            notification = Notification.createCriteria().get {
+                eq('userId', userId)
+                eq('type', type)
+                eq('sourceEntityType', opts.sourceEntityType)
+                eq('sourceEntityId', opts.sourceEntityId.toString())
+                eq('read', false)
+            }
+        }
+
+        if (notification) {
+            // Update existing — freshen the body/timestamp, bump count
+            notification.coalescedCount = (notification.coalescedCount ?: 1) + 1
+            notification.body = body ? truncate(body, 500) : null
+            notification.iconUrl = opts.iconUrl
+            notification.sourceUserId = opts.sourceUserId
+            if (opts.titlePlural) notification.titlePlural = opts.titlePlural
+        } else {
+            notification = new Notification(
+                scopeId: scopeId,
+                userId: userId,
+                type: type,
+                title: title,
+                titlePlural: opts.titlePlural,
+                body: body ? truncate(body, 500) : null,
+                link: link,
+                iconUrl: opts.iconUrl,
+                sourceUserId: opts.sourceUserId,
+                sourceEntityType: opts.sourceEntityType,
+                sourceEntityId: opts.sourceEntityId?.toString()
+            )
+        }
+
         notification.save(flush: true, failOnError: true)
         return notification
     }
@@ -91,7 +117,7 @@ class NotificationService {
     /**
      * Mark a single notification as read.
      */
-    Notification markAsRead(Long notificationId, String userId) {
+    Notification markAsRead(Serializable notificationId, String userId) {
         Notification n = Notification.get(notificationId)
         if (!n || n.userId != userId) return null
         if (!n.read) {
@@ -125,7 +151,7 @@ class NotificationService {
     /**
      * Delete a notification (hard delete — notifications are ephemeral).
      */
-    boolean deleteNotification(Long notificationId, String userId) {
+    boolean deleteNotification(Serializable notificationId, String userId) {
         Notification n = Notification.get(notificationId)
         if (!n || n.userId != userId) return false
         n.delete(flush: true)
@@ -230,10 +256,15 @@ class NotificationService {
 
         notifications.collect { Notification n ->
             def user = n.sourceUserId ? users[n.sourceUserId] : null
+            int count = n.coalescedCount ?: 1
+            String resolvedTitle = n.title
+            if (count > 1 && n.titlePlural) {
+                resolvedTitle = n.titlePlural.replace('{count}', count.toString())
+            }
             [
                 id            : n.id,
                 type          : n.type,
-                title         : n.title,
+                title         : resolvedTitle,
                 body          : n.body,
                 link          : n.link,
                 iconUrl       : n.iconUrl ?: user?.avatarUrl,

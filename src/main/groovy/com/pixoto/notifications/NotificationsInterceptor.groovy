@@ -1,27 +1,33 @@
 package com.pixoto.notifications
 
 import grails.artefact.Interceptor
+import org.springframework.security.core.context.SecurityContextHolder
 
 /**
- * Abstract interceptor that host apps must subclass to provide
- * scope and user identity for notification endpoints.
+ * Default interceptor that resolves the authenticated user's ID from Spring Security.
+ * Sets notificationsUserId from the principal's id property.
  *
- * The subclass should set two request attributes:
- *   - notificationsScopeId: tenant/community/scope identifier (String)
- *   - notificationsUserId: authenticated user's ID (String)
- *
- * Example:
- *   class MyNotificationsInterceptor extends NotificationsInterceptor {
- *       boolean before() {
- *           request.setAttribute('notificationsScopeId', resolveScopeId())
- *           request.setAttribute('notificationsUserId', resolveUserId())
- *           true
- *       }
- *   }
+ * Works out of the box with any Spring Security setup where the principal has an 'id' property.
+ * Host apps can override by registering a bean named 'notificationsInterceptor' in doWithSpring().
  */
-abstract class NotificationsInterceptor implements Interceptor {
+class NotificationsInterceptor implements Interceptor {
 
     NotificationsInterceptor() {
         match(namespace: 'notifications')
     }
+
+    @Override
+    boolean before() {
+        def principal = SecurityContextHolder.context.authentication?.principal
+        if (principal?.hasProperty('id')) {
+            request.setAttribute('notificationsUserId', principal.id?.toString())
+        }
+        return true
+    }
+
+    @Override
+    boolean after() { true }
+
+    @Override
+    void afterView() {}
 }

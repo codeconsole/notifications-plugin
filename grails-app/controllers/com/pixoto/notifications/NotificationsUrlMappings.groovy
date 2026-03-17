@@ -12,12 +12,8 @@ class NotificationsUrlMappings {
         post '/notifications/read-all'(namespace: 'notifications', controller: 'notification', action: 'markAllRead')
 
         // Single notification actions
-        post "/notifications/$id/read"(namespace: 'notifications', controller: 'notification', action: 'markRead') {
-            constraints { id(matches: /\d+/) }
-        }
-        delete "/notifications/$id"(namespace: 'notifications', controller: 'notification', action: 'deleteNotification') {
-            constraints { id(matches: /\d+/) }
-        }
+        post "/notifications/$id/read"(namespace: 'notifications', controller: 'notification', action: 'markRead')
+        delete "/notifications/$id"(namespace: 'notifications', controller: 'notification', action: 'deleteNotification')
 
         // Preferences
         get '/notifications/preferences'(namespace: 'notifications', controller: 'notification', action: 'preferences')

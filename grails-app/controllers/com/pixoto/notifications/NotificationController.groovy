@@ -26,9 +26,11 @@ class NotificationController {
         String userId = getUserId()
         if (!userId) { render(status: 401); return }
 
-        List<Notification> notifications = notificationService.getNotifications(userId, getScopeId(), null, 30)
+        // Show all notifications for the user (no scope filter) — notifications
+        // may come from different plugins with different or null scopeIds.
+        List<Notification> notifications = notificationService.getNotifications(userId, null, null, 30)
         List<Map> enriched = notificationService.enrichNotifications(notifications)
-        int unreadCount = notificationService.getUnreadCount(userId, getScopeId())
+        int unreadCount = notificationService.getUnreadCount(userId)
         Long oldestId = notifications ? notifications.last().id : null
         boolean hasMore = notifications.size() >= 30
 
@@ -52,7 +54,8 @@ class NotificationController {
         int max = Math.min(params.int('max', 20), 50)
         Long beforeId = params.long('beforeId')
 
-        List<Notification> notifications = notificationService.getNotifications(userId, getScopeId(), beforeId, max)
+        // No scope filter — bell dropdown shows all notifications
+        List<Notification> notifications = notificationService.getNotifications(userId, null, beforeId, max)
         List<Map> enriched = notificationService.enrichNotifications(notifications)
 
         render([
@@ -68,7 +71,8 @@ class NotificationController {
         String userId = getUserId()
         if (!userId) { render(status: 401); return }
 
-        int count = notificationService.getUnreadCount(userId, getScopeId())
+        // No scope filter — badge shows total unread across all sources
+        int count = notificationService.getUnreadCount(userId)
         render([count: count] as JSON)
     }
 
@@ -79,7 +83,7 @@ class NotificationController {
         String userId = getUserId()
         if (!userId) { render(status: 401); return }
 
-        Long id = params.long('id')
+        def id = params.id
         Notification n = notificationService.markAsRead(id, userId)
         if (!n) { render(status: 404); return }
 
@@ -104,7 +108,7 @@ class NotificationController {
         String userId = getUserId()
         if (!userId) { render(status: 401); return }
 
-        Long id = params.long('id')
+        def id = params.id
         boolean deleted = notificationService.deleteNotification(id, userId)
         if (!deleted) { render(status: 404); return }
 

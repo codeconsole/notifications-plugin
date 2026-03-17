@@ -14,13 +14,15 @@ class Notification implements Serializable {
     String scopeId
     String userId                        // Recipient
     String type                          // Extensible type identifier
-    String title
+    String title                         // Singular title (e.g. "Scott sent a message")
+    String titlePlural                   // Plural template with {count} (e.g. "Scott sent {count} messages")
     String body                          // Preview text
     String link                          // URL to navigate to on click
     String iconUrl                       // Custom icon (e.g. sender avatar), nullable
     String sourceUserId                  // Who triggered this notification
     String sourceEntityType              // Entity kind (e.g. 'conversation', 'post')
     String sourceEntityId                // Entity ID
+    int coalescedCount = 1               // How many events this notification represents
     boolean read = false
     LocalDateTime readAt
     @AutoTimestamp(AutoTimestamp.EventType.CREATED) LocalDateTime created
@@ -31,6 +33,7 @@ class Notification implements Serializable {
         userId()
         type maxSize: 100
         title maxSize: 200
+        titlePlural nullable: true, maxSize: 200
         body nullable: true, maxSize: 500
         link nullable: true, maxSize: 1000
         iconUrl nullable: true, maxSize: 1000
