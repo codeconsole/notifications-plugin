@@ -146,7 +146,7 @@ In this project, the community-plugin provides the `NotificationUserProvider` im
 
 | SPI | Implementation | Registered in |
 |---|---|---|
-| `NotificationUserProvider` | `CommunityNotificationUserProvider` — resolves host app user IDs to community `User` records (display names, avatars) via `UserPrivateField` mapping | `CommunityGrailsPlugin.doWithSpring()` |
+| `NotificationUserProvider` | `CommunityNotificationUserProvider` — resolves host app user IDs to community `User` records (display names, avatars) via `User.hostUserId` | `CommunityGrailsPlugin.doWithSpring()` |
 
 The messaging-plugin and community-plugin inject `NotificationService` with `@Autowired(required = false)` to create notifications:
 - **Messaging**: `MessageService.sendMessage()` notifies conversation participants (coalesced per conversation)
